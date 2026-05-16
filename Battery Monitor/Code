@@ -1,0 +1,68 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+// LCD setup
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+// ADC pins
+const int adcPin1 = 4; // Cell 1
+const int adcPin2 = 5; // Cell 2
+const int adcPin3 = 6; // Cell 3
+// Bluetooth pins
+#define BT_RX 15 // ESP32 RX <- Bluetooth TX
+#define BT_TX 23 // ESP32 TX -> Bluetooth RX
+void setup() {
+// Serial Monitor
+Serial.begin(115200);
+// Bluetooth Serial
+Serial2.begin(9600, SERIAL_8N1, BT_RX, BT_TX);
+// LCD init
+Wire.begin(21, 22);
+lcd.init();
+lcd.backlight();
+lcd.clear();
+lcd.setCursor(0, 0);
+lcd.print("ESP32 Bluetooth");
+lcd.setCursor(0, 1);
+lcd.print("Init Complete");
+delay(1500);
+lcd.clear();
+Serial.println("ESP32-C6 3 ADC Ready");
+Serial2.println("ESP32-C6 3 ADC Ready");
+}
+void loop() {
+// Read ADC values
+int adc1 = analogRead(adcPin1);
+int adc2 = analogRead(adcPin2);
+int adc3 = analogRead(adcPin3);
+// Convert ADC to voltage
+float volt1 = (adc1 / 4095.0) * 3.3;
+float volt2 = (adc2 / 4095.0) * 3.3;
+float volt3 = (adc3 / 4095.0) * 3.3;
+float total = volt1 + volt2 + volt3;
+// Percentage (ADC based)
+float perc1 = (adc1 / 4095.0) * 100.0;
+float perc2 = (adc2 / 4095.0) * 100.0;
+float perc3 = (adc3 / 4095.0) * 100.0;
+// Prepare output string
+String output =
+"C1 ADC=" + String(adc1) + " (" + String(perc1,1) + "%) V=" + String(volt1,2) +
+" | C2 ADC=" + String(adc2) + " (" + String(perc2,1) + "%) V=" + String(volt2,2) +
+" | C3 ADC=" + String(adc3) + " (" + String(perc3,1) + "%) V=" + String(volt3,2) +
+" | Total=" + String(total,2);
+// Send to Serial Monitor
+Serial.println(output);
+// Send same data to Bluetooth
+Serial2.println(output);
+// LCD Display (Page 1: Cell 1 & Cell 2)
+lcd.setCursor(0, 0);
+lcd.print("C1:" + String((int)perc1) + "% V:" + String(volt1,1) + " ");
+lcd.setCursor(0, 1);
+lcd.print("C2:" + String((int)perc2) + "% V:" + String(volt2,1) + " ");
+delay(2000);
+// LCD Display (Page 2: Cell 3 & Total)
+lcd.clear();
+lcd.setCursor(0, 0);
+lcd.print("C3:" + String((int)perc3) + "% V:" + String(volt3,1) + " ");
+lcd.setCursor(0, 1);
+lcd.print("Total: " + String(total,2) + "V ");
+delay(2000);
+}
