@@ -1,0 +1,92 @@
+#include <WiFi.h>
+#include <WebServer.h>
+const char* ssid = "1234";
+const char* password = "123456789m";
+#define RELAY_PIN 7
+#define TOUCH_PIN 10
+WebServer server(80);
+bool relayState = false; // false = OFF, true = ON
+bool lastTouchState = LOW;
+void handleRoot() {
+String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'>";
+
+html += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+html += "<title>BUILD CLUB</title>";
+
+html += "<style>body{font-family:sans-serif;text-
+align:center;padding:20px;}";
+
+html += ".toggle{width:60px;height:30px;position:relative;display:inline-
+block}";
+
+html += ".toggle input{display:none;}";
+html += ".slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;";
+html += "background-color:#ccc;transition:.4s;border-radius:30px;}";
+html += ".slider:before{position:absolute;content:'';height:22px;width:22px;";
+html += "left:4px;bottom:4px;background-color:white;transition:.4s;border-radius:50%;}";
+html += "input:checked+.slider{background-color:#2196F3;}";
+html += "input:checked+.slider:before{transform:translateX(30px);}</style>";
+html += "<h1>BUILD CLUB</h1>";
+html += "<h1>Home Automation </h1>";
+html += "<label class='toggle'><input type='checkbox'onclick='toggleRelay(this)'";
+if (relayState) html += " checked";
+html += "><span class='slider'></span></label>";
+html += "<p>Status: <span id='status'>";
+html += (relayState ? "ON" : "OFF");
+html += "</span></p>";
+html += "<script>function toggleRelay(el){";
+html += "var xhr=new XMLHttpRequest();";
+html += "xhr.open('GET', el.checked ? '/on' : '/off', true);";
+html += "xhr.send();}";
+html += "setInterval(function(){fetch('/status').then(r=>r.text()).then(t=>{";
+html += "document.getElementById('status').innerText=t;";
+html += "document.querySelector('input').checked=(t==='ON');";
+html += "});},1000);</script>";
+html += "</body></html>";
+server.send(200, "text/html", html);
+}
+void handleOn() {
+relayState = true;
+digitalWrite(RELAY_PIN, HIGH);
+server.send(200, "text/plain", "OK");
+}
+void handleOff() {
+relayState = false;
+digitalWrite(RELAY_PIN, LOW);
+server.send(200, "text/plain", "OK");
+}
+void handleStatus() {
+server.send(200, "text/plain", relayState ? "ON" : "OFF");
+}
+void setup() {
+Serial.begin(115200);
+pinMode(RELAY_PIN, OUTPUT);
+pinMode(TOUCH_PIN, INPUT);
+digitalWrite(RELAY_PIN, LOW); // Initially off
+WiFi.begin(ssid, password);
+Serial.print("Connecting to WiFi");
+while (WiFi.status() != WL_CONNECTED) {
+delay(500);
+Serial.print(".");
+}
+Serial.println("\nWiFi Connected!");
+Serial.print("IP Address: ");
+Serial.println(WiFi.localIP());
+server.on("/", handleRoot);
+server.on("/on", handleOn);
+server.on("/off", handleOff);
+server.on("/status", handleStatus);
+server.begin();
+Serial.println("HTTP server started");
+}
+void loop() {
+server.handleClient();
+bool touch = digitalRead(TOUCH_PIN);
+if (touch != lastTouchState && touch == HIGH) {
+relayState = !relayState;
+digitalWrite(RELAY_PIN, relayState ? HIGH : LOW);
+Serial.println(relayState ? "Relay ON by Touch" : "Relay OFF by Touch");
+delay(300); // debounce
+}
+lastTouchState = touch;
+}
