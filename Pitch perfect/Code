@@ -1,0 +1,130 @@
+#include "Wire.h"
+#include <MPU6050_light.h>
+MPU6050 mpu(Wire);
+// PID variables
+unsigned long lastTime = 0;
+const float sampleTime = 0.01; // 10ms control loop
+float theta = 0;
+float setpoint = 0; // Start at zero, can be changed to ±10
+float kp = 7.00;
+double ki = 1.5;
+float kd = 0.7;
+float e = 0;
+float ep = 0;
+double i = 0;
+float p = 0;
+float d = 0;
+double pid = 0;
+// Motor pins
+const int motor1pin1 = 13;
+const int motor1pin2 = 9;
+const int motor2pin1 = 18;
+const int motor2pin2 = 19;
+const int motor1PWM = 12;
+const int motor2PWM = 20;
+// Base motor speeds (minimum power to overcome friction)
+const long baseSpeed = 180;
+// System states
+enum SystemState {STABILIZE_OFFSET, MOVE_TO_SETPOINT,
+MAINTAIN_POSITION};
+SystemState currentState = STABILIZE_OFFSET;
+void setup() {
+Serial.begin(115200);
+// Motor control setup
+pinMode(motor1pin1, OUTPUT);
+pinMode(motor1pin2, OUTPUT);
+pinMode(motor2pin1, OUTPUT);
+pinMode(motor2pin2, OUTPUT);
+pinMode(motor1PWM, OUTPUT);
+pinMode(motor2PWM, OUTPUT);
+// Configure ESP32 PWM
+analogWriteFrequency(5000); // 5kHz PWM
+analogWriteResolution(8); // 8-bit (0-255)
+// Initialize MPU6050
+Wire.begin(4, 5); // SDA, SCL
+Wire.setClock(400000);
+byte status = mpu.begin();
+while(status != 0) {
+Serial.println("MPU6050 connection failed");
+delay(1000);
+}
+Serial.println("Calculating offsets...");
+delay(1000);
+mpu.calcOffsets(); // This establishes your zero point
+Serial.println("System ready");
+lastTime = micros();
+}
+void loop() {
+mpu.update();
+// Timing control
+unsigned long now = micros();
+float deltaTime = (now - lastTime) / 1000000.0;
+if(deltaTime >= sampleTime) {
+theta = mpu.getAngleX(); // Current angle
+// PID Calculation
+e = theta - setpoint;
+p = kp * e;
+i += ki * e * deltaTime;
+i = constrain(i, -100, 100); // Anti-windup
+d = kd * (e - ep) / deltaTime;
+pid = p + i + d;
+ep = e;
+// Motor control
+controlMotors(pid);
+// State machine for different behaviors
+switch(currentState) {
+case STABILIZE_OFFSET:
+if(abs(theta - setpoint) < 1.0) { // Within 1° of target
+currentState = MAINTAIN_POSITION;
+}
+break;
+case MOVE_TO_SETPOINT:
+if(abs(theta - setpoint) < 1.0) {
+currentState = MAINTAIN_POSITION;
+}
+break;
+case MAINTAIN_POSITION:
+// Just keep maintaining the position
+break;
+}
+// Debug output
+Serial.print("Angle:");
+Serial.print(theta);
+Serial.print("\tSetpoint:");
+Serial.print(setpoint);
+Serial.print("\tPID:");
+Serial.println(pid);
+lastTime = now;
+}
+// Example of changing setpoint (could be triggered by button/command)
+if(Serial.available()) {
+char cmd = Serial.read();
+if(cmd == '1') setpoint = 0.0; // Move to +10°
+if(cmd == '2') setpoint = 0.0; // Move to -10°
+if(cmd == '0') setpoint = 0.0; // Return to zero
+currentState = MOVE_TO_SETPOINT;
+}
+}
+void controlMotors(double pidOutput) {
+// Set motor directions (depends on your motor wiring)
+digitalWrite(motor1pin1, LOW);
+digitalWrite(motor1pin2, HIGH);
+digitalWrite(motor2pin1, HIGH);
+digitalWrite(motor2pin2, LOW);
+// Calculate motor speeds with PID correction
+int motor1Speed = constrain(baseSpeed - pidOutput, 10, 255);
+int motor2Speed = constrain(baseSpeed + pidOutput, 10, 255);
+analogWrite(motor1PWM, motor1Speed);
+analogWrite(motor2PWM, motor2Speed);
+}
+// ESP32 PWM configuration
+void analogWriteFrequency(int freq) {
+ledcAttach(0, freq, 8);
+ledcAttach(1, freq, 8);
+ledcAttachChannel(motor1PWM, 0, freq, 8);
+ledcAttachChannel(motor2PWM, 1, freq, 8);
+}
+void analogWriteResolution(int res) {
+// Handled in frequency setup
+delay (100);
+}
