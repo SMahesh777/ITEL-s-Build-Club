@@ -1,0 +1,45 @@
+#include <esp_now.h>
+#include <WiFi.h>
+// L298N motor pins
+#define IN1 4
+#define IN2 5
+#define IN3 6
+#define IN4 7
+typedef struct struct_message {
+float x;
+float y;
+float z;
+} struct_message;
+struct_message incomingData;
+void OnDataRecv(const uint8_t * mac, const uint8_t *incoming, int len) {
+memcpy(&incomingData, incoming, sizeof(incomingData));
+Serial.print("Received X: "); Serial.print(incomingData.x);
+Serial.print(" Y: "); Serial.print(incomingData.y);
+Serial.print(" Z: "); Serial.println(incomingData.z);
+// Example control: forward if X tilt > 0.5, back if < -0.5
+if (incomingData.x > 0.5) {
+digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
+digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
+} else if (incomingData.x < -0.5) {
+digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH);
+digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH);
+} else {
+digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+}
+}
+void setup() {
+Serial.begin(115200);
+pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT);
+pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
+WiFi.mode(WIFI_STA);
+if (esp_now_init() != ESP_OK) {
+Serial.println("ESP-NOW init failed");
+  return;
+}
+esp_now_register_recv_cb(esp_now_recv_cb_t(OnDataRecv));
+Serial.println("Receiver ready");
+}
+void loop() {
+// Nothing needed
+}
