@@ -1,0 +1,45 @@
+#include <HardwareSerial.h>
+#include <MD_Parola.h>
+#include <MD_MAX72XX.h>
+#include <SPI.h>
+// ---------------- BLUETOOTH CONFIGURATION ----------------
+#define RXD2 6
+#define TXD2 7
+HardwareSerial BTSerial(1); // Use UART1
+// ---------------- MATRIX DISPLAY CONFIGURATION ----------------
+#define HARDWARE_TYPE MD_MAX72XX::FC16_HW
+#define MAX_DEVICES 4
+#define DATA_PIN 23
+#define CS_PIN 5
+#define CLK_PIN 18
+MD_Parola matrix = MD_Parola(HARDWARE_TYPE, DATA_PIN, CLK_PIN,
+CS_PIN, MAX_DEVICES);
+// ---------------- VARIABLES ----------------
+String receivedText = ""; // For storing received text
+void setup() {
+Serial.begin(115200); // Debug via USB
+BTSerial.begin(9600, SERIAL_8N1, RXD2, TXD2); // Bluetooth
+matrix.begin();
+matrix.setIntensity(5); // Brightness (0–15)
+matrix.displayClear();
+matrix.displayText("READY", PA_CENTER, 100, 0, PA_SCROLL_LEFT,
+PA_SCROLL_LEFT);
+Serial.println("Bluetooth Matrix Display Ready");
+}
+void loop() {
+// Keep display running animations
+if (matrix.displayAnimate()) {
+matrix.displayReset();
+}
+// Check Bluetooth data
+if (BTSerial.available()) {
+receivedText = BTSerial.readStringUntil('\n');
+receivedText.trim();
+Serial.print("Received: ");
+Serial.println(receivedText);
+// Show text on matrix
+matrix.displayClear();
+matrix.displayText(receivedText.c_str(), PA_CENTER, 100, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+}
+}
+
