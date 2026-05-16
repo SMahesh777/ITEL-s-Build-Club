@@ -1,0 +1,72 @@
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Max72xxPanel.h>
+// ================= SPI PINS (ESP32-C6) =================
+#define DIN_PIN 19
+#define CLK_PIN 21
+#define CS_PIN 18
+// ================= MATRIX SETUP =================
+const int numberOfHorizontalDisplays = 4;
+const int numberOfVerticalDisplays = 1;
+Max72xxPanel matrix = Max72xxPanel(CS_PIN, numberOfHorizontalDisplays, numberOfVerticalDisplays);
+// ================= LED SETUP =================
+int ledPins[10] = {2, 4, 5, 8, 9, 10, 11, 12, 13, 14};
+// ================= TASK DECLARATIONS =================
+void Task_LED(void *pvParameters);
+void Task_Display(void *pvParameters);
+// ================= SETUP =================
+void setup()
+{
+Serial.begin(115200);
+// SPI initialization (MANDATORY for ESP32-C6)
+SPI.begin(CLK_PIN, -1, DIN_PIN, CS_PIN);
+// LED initialization
+for (int i = 0; i < 10; i++)
+{
+pinMode(ledPins[i], OUTPUT);
+}
+// Matrix initialization
+matrix.setIntensity(10);
+for (int i = 0; i < numberOfHorizontalDisplays; i++)
+{
+matrix.setPosition(i, i, 0);
+matrix.setRotation(i, 1);
+}
+// Create RTOS Tasks
+xTaskCreate(Task_LED, "LED Task", 1024, NULL, 1, NULL);
+xTaskCreate(Task_Display, "Display Task", 2048, NULL, 1, NULL);
+}
+void loop()
+{
+// RTOS runs tasks, nothing here
+}
+// ================= LED TASK =================
+void Task_LED(void *pvParameters)
+{
+while (1)
+{
+for (int i = 0; i < 10; i++)
+{
+digitalWrite(ledPins[i], HIGH);
+vTaskDelay(100 / portTICK_PERIOD_MS);
+digitalWrite(ledPins[i], LOW);
+}
+}
+}
+// ================= DISPLAY TASK =================
+void Task_Display(void *pvParameters)
+{
+String text = "ESP32-C6 RTOS ";
+while (1)
+{
+int width = text.length() * 6;
+for (int x = matrix.width(); x > -width; x--)
+{
+matrix.fillScreen(LOW);
+matrix.setCursor(x, 0);
+matrix.print(text);
+matrix.write();
+vTaskDelay(80 / portTICK_PERIOD_MS);
+}
+}
+}
