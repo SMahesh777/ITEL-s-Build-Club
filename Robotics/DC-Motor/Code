@@ -1,0 +1,36 @@
+// Define motor control pins
+int motor1pin1 = 19;
+int motor1pin2 = 18;
+int motor2pin1 = 20;
+int motor2pin2 = 21;
+// Speed control pins
+int ENA = 22; // PWM for motor 1
+int ENB = 23; // PWM for motor 2
+void setup() {
+Serial.begin(115200);
+pinMode(motor1pin1, OUTPUT);
+pinMode(motor1pin2, OUTPUT);
+pinMode(motor2pin1, OUTPUT);
+pinMode(motor2pin2, OUTPUT);
+pinMode(ENA, OUTPUT);
+pinMode(ENB, OUTPUT);
+}
+void loop() {
+Serial.println("Moving Forward");
+digitalWrite(motor1pin1, HIGH); digitalWrite(motor1pin2, LOW);
+digitalWrite(motor2pin1, HIGH); digitalWrite(motor2pin2, LOW);
+analogWrite(ENA, 150); analogWrite(ENB, 150);
+delay(2000);
+Serial.println("Turning Left");
+digitalWrite(motor1pin1, LOW); digitalWrite(motor1pin2, HIGH);
+digitalWrite(motor2pin1, HIGH); digitalWrite(motor2pin2, LOW);
+delay(2000);
+Serial.println("Turning Right");
+digitalWrite(motor1pin1, HIGH); digitalWrite(motor1pin2, LOW);
+digitalWrite(motor2pin1, LOW); digitalWrite(motor2pin2, HIGH);
+delay(2000);
+Serial.println("Stopping");
+digitalWrite(motor1pin1, LOW); digitalWrite(motor1pin2, LOW);
+digitalWrite(motor2pin1, LOW); digitalWrite(motor2pin2, LOW);
+delay(2000);
+}
