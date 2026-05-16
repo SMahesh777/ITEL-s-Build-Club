@@ -1,0 +1,36 @@
+#define BLYNK_TEMPLATE_ID         "ENTER_YOUR_BLYNK_TEMPLATE_ID"
+#define BLYNK_TEMPLATE_NAME       "ENTER_YOUR_BLYNK_TEMPLATE_NAME"
+#define BLYNK_AUTH_TOKEN          "ENTER_YOUR_BLYNK_AUTH_TOKEN"
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <EEPROM.h>
+// Wi-Fi credentials
+const char ssid[] = "Mahesh";
+const char pass[] = "123456789";
+// Water Flow Sensor pin
+#define FLOW_SENSOR_PIN 4 // Adjust according to your wiring
+BlynkTimer timer;
+volatile unsigned long pulseCount = 0;
+float flowRate = 0.0; // L/min
+float totalLiters = 0.0;
+unsigned long lastMillis = 0;
+// ISR for water flow sensor
+void IRAM_ATTR pulseCounter() {
+pulseCount++;
+}
+void setup() {
+Serial.begin(115200);
+delay(100);
+// Connect to Blynk
+Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+// Setup water flow sensor pin
+pinMode(FLOW_SENSOR_PIN, INPUT_PULLUP);
+attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN), pulseCounter,RISING);
+// EEPROM for total water usage storage
+EEPROM.begin(32);
+EEPROM.get(0, totalLiters);
+if (isnan(totalLiters)) totalLiters = 0.0;
+lastMillis = millis();
+// Send data every 5 seconds
+timer.setInterval(5000L, sendFlowDataToBlynk);
+}
