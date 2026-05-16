@@ -1,0 +1,23 @@
+// Define IR sensor pins
+const int IR_SENSOR1 = 10;
+const int IR_SENSOR2 = 11;
+const int IR_SENSOR3 = 2;
+const int IR_SENSOR4 = 3;
+void setup() {
+Serial.begin(115200);
+pinMode(IR_SENSOR1, INPUT);
+pinMode(IR_SENSOR2, INPUT);
+pinMode(IR_SENSOR3, INPUT);
+pinMode(IR_SENSOR4, INPUT);
+}
+void loop() {
+int irState1 = digitalRead(IR_SENSOR1);
+int irState2 = digitalRead(IR_SENSOR2);
+int irState3 = digitalRead(IR_SENSOR3);
+int irState4 = digitalRead(IR_SENSOR4);
+Serial.print("IR1: "); Serial.print(irState1);
+Serial.print(" | IR2: "); Serial.print(irState2);
+Serial.print(" | IR3: "); Serial.print(irState3);
+Serial.print(" | IR4: "); Serial.println(irState4);
+delay(200); // Slow down readings for visibility
+}
