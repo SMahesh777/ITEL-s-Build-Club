@@ -1,0 +1,110 @@
+#include <Arduino.h>
+#include <WiFi.h> // ESP32-C6 WiFi
+#include <ESP_Mail_Client.h> // ESP Mail Client
+/************ Wi-Fi Credentials ************/
+#define WIFI_SSID "Enter_Your_Name"
+#define WIFI_PASSWORD "Enter_your_Password"
+/************ SMTP Server Settings ************/
+#define SMTP_HOST "smtp.gmail.com"
+#define SMTP_PORT 465
+/************ Email Credentials ************/
+#define AUTHOR_EMAIL "author@gmail.com" //This is your sender email the dummy email you made and configured just now
+#define AUTHOR_PASSWORD "Your_16_digits_password" //Your dummy email’s app password which has 16 digits
+/************ Recipient ************/
+#define RECIPIENT_EMAIL "recipient@gmail.com" //this the reciever’s email
+/* SMTP session object */
+SMTPSession smtp;
+/* Callback declaration */
+void smtpCallback(SMTP_Status status);
+void setup() {
+Serial.begin(115200);
+delay(1000);
+Serial.println("\nESP32-C6 Email Sender");
+/************ Wi-Fi Connection ************/
+WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+Serial.print("Connecting to Wi-Fi");
+while (WiFi.status() != WL_CONNECTED) {
+Serial.print(".");
+delay(300);
+}
+Serial.println("\nWi-Fi connected");
+Serial.print("IP address: ");
+Serial.println(WiFi.localIP());
+/************ Mail Client Settings ************/
+MailClient.networkReconnect(true);
+smtp.debug(1); // 0 = off, 1 = basic debug
+smtp.callback(smtpCallback);
+/************ Session Configuration ************/
+Session_Config config;
+config.server.host_name = SMTP_HOST;
+config.server.port = SMTP_PORT;
+config.login.email = AUTHOR_EMAIL;
+config.login.password = AUTHOR_PASSWORD;
+config.login.user_domain = "";
+// NTP time (required for SSL)
+config.time.ntp_server = F("pool.ntp.org,time.nist.gov");
+config.time.gmt_offset = 3; // Adjust to your timezone
+config.time.day_light_offset = 0;
+/************ Email Message ************/
+SMTP_Message message;
+message.sender.name = F("ESP32-C6");
+message.sender.email = AUTHOR_EMAIL;
+message.subject = F("ESP32-C6 Test Email");
+message.addRecipient(F("Recipient"), RECIPIENT_EMAIL);
+// Plain text message
+String textMsg = "Hello World!\nSent from ESP32-C6";
+message.text.content = textMsg.c_str();
+message.text.charSet = "us-ascii";
+message.text.transfer_encoding = Content_Transfer_Encoding::enc_7bit;
+message.priority = esp_mail_smtp_priority::esp_mail_smtp_priority_low;
+message.response.notify =
+esp_mail_smtp_notify_success |
+esp_mail_smtp_notify_failure |
+esp_mail_smtp_notify_delay;
+/************ Connect to SMTP Server ************/
+if (!smtp.connect(&config)) {
+ESP_MAIL_PRINTF(
+"SMTP Connection failed. Status: %d, Error: %d, Reason: %s\n",
+smtp.statusCode(),
+smtp.errorCode(),
+smtp.errorReason().c_str()
+);
+return;
+}
+if (smtp.isAuthenticated()) {
+Serial.println("SMTP authenticated successfully");
+} else {
+Serial.println("SMTP connected (no authentication)");
+}
+/************ Send Email ************/
+if (!MailClient.sendMail(&smtp, &message)) {
+ESP_MAIL_PRINTF(
+"Send failed. Status: %d, Error: %d, Reason: %s\n",
+smtp.statusCode(),
+smtp.errorCode(),
+smtp.errorReason().c_str()
+);
+}
+}
+void loop() {
+// Nothing needed here
+}
+/************ Callback ************/
+void smtpCallback(SMTP_Status status) {
+Serial.println(status.info());
+if (status.success()) {
+Serial.println("-------------");
+ESP_MAIL_PRINTF("Sent success: %d\n", status.completedCount());
+ESP_MAIL_PRINTF("Sent failed : %d\n", status.failedCount());
+Serial.println("-------------");
+for (size_t i = 0; i < smtp.sendingResult.size(); i++) {
+SMTP_Result result = smtp.sendingResult.getItem(i);
+ESP_MAIL_PRINTF("Message #%d\n", i + 1);
+ESP_MAIL_PRINTF("Status : %s\n", result.completed ? "Success" : "Failed");
+ESP_MAIL_PRINTF("Date/Time: %s\n", MailClient.Time.getDateTimeString(result.timestamp,"%B %d, %Y %H:%M:%S").c_str());
+ESP_MAIL_PRINTF("Recipient: %s\n", result.recipients.c_str());
+ESP_MAIL_PRINTF("Subject : %s\n", result.subject.c_str());
+}
+smtp.sendingResult.clear(); // Prevent memory growth
+}
+}
