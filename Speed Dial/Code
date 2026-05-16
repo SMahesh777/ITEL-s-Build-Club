@@ -1,0 +1,29 @@
+// Define Motor Pins (connected to L298N)
+const int motorA1 = 5; // Direction Pin 1
+const int motorA2 = 6; // Direction Pin 2
+const int enableA = 4; // PWM Pin for Speed
+// Define Analog Input Pin (Potentiometer)
+const int potPin = 2; // Analog pin for potentiometer
+void setup() {
+Serial.begin(9600); // Start serial for debugging
+pinMode(motorA1, OUTPUT);
+pinMode(motorA2, OUTPUT);
+pinMode(enableA, OUTPUT);
+// Initial direction (e.g., forward)
+digitalWrite(motorA1, HIGH);
+digitalWrite(motorA2, LOW);
+}
+void loop() {
+// 1. Read analog value from potentiometer (0-1023)
+int potValue = analogRead(potPin);
+// 2. Map the analog value to the PWM range (0-255)
+int motorSpeed = map(potValue, 0, 4096, 0, 255);
+// 3. Set motor speed using analogWrite (PWM)
+analogWrite(enableA, motorSpeed);
+// Display values (optional, for monitoring)
+Serial.print("Pot Value: ");
+Serial.print(potValue);
+Serial.print(" | Motor Speed (PWM): ");
+Serial.println(motorSpeed);
+delay(50); // Small delay for stability
+}
